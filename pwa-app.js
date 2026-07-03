@@ -18,6 +18,7 @@
   var CALCULATOR_MODES = [
     { key: "powerToSpeed", label: "功率->速度", title: "根据功率、坡度计算速度" },
     { key: "speedToPower", label: "速度->功率", title: "根据速度、坡度计算功率" },
+    { key: "climbPower", label: "爬坡功率", title: "按最小齿比估算目标速度所需功率" },
     { key: "theorySpeed", label: "理论速度", title: "根据牙盘、飞轮、踏频计算理论速度" },
     { key: "targetCog", label: "速度->飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" },
     { key: "gearSpeed", label: "齿比->车速", title: "快速查看当前飞轮各齿位的齿比与理论速度" }
@@ -282,6 +283,8 @@
         speedToPowerSpeedKmh: "30",
         speedToPowerSlopePercent: "0",
         speedToPowerPosition: "hoods",
+        climbPowerSpeedKmh: "12",
+        climbPowerSlopePercent: "8",
         selectedChainringTeeth: 50,
         selectedCogTeeth: 17,
         cadenceOverride: "90",
@@ -561,6 +564,21 @@
     return 3.6 * (cadenceRpm / 60) * gearRatio(chainringTeeth, cogTeeth) * wheelCircumferenceMm * 0.001;
   }
 
+  function cadenceFromSpeed(speedKmh, chainringTeeth, cogTeeth, wheelCircumferenceMm) {
+    var ratio = gearRatio(chainringTeeth, cogTeeth);
+    if (!ratio || !wheelCircumferenceMm) return 0;
+    return speedKmh / (3.6 * ratio * wheelCircumferenceMm * 0.001) * 60;
+  }
+
+  function minimumGearSetup() {
+    var chainrings = currentChainringOption().chainrings || [];
+    var cogs = currentCassetteOption().cogs || [];
+    return {
+      chainring: Math.min.apply(null, chainrings),
+      cog: Math.max.apply(null, cogs)
+    };
+  }
+
   function totalPower(speedKmh, slopePercent, cda) {
     var speedMs = speedKmh / 3.6;
     var slopeFraction = slopePercent / 100;
@@ -755,10 +773,13 @@
     var cadence = toNumber(state.calculator.cadenceOverride, state.settings.defaultCadenceRpm);
     var targetCadence = toNumber(state.calculator.targetCogCadenceRpm, state.settings.defaultCadenceRpm);
     var gearSpeedRows = cadenceTableRows();
+    var minGear = minimumGearSetup();
     var mode = state.calculator.mode;
     var modeMeta = CALCULATOR_MODES.find(function (item) { return item.key === mode; }) || CALCULATOR_MODES[0];
     var result = null;
     var fields = [];
+    var fieldsClassName = "controls-line";
+    var beforeResultContent = "";
     var extraContent = "";
 
     if (mode === "powerToSpeed") {
@@ -789,6 +810,28 @@
         inlineNumberField("data-calculator-input", "speedToPowerSlopePercent", "坡度", state.calculator.speedToPowerSlopePercent, "%"),
         inlinePositionSelect("speedToPowerPosition", state.calculator.speedToPowerPosition)
       ];
+    } else if (mode === "climbPower") {
+      var climbSpeed = toNumber(state.calculator.climbPowerSpeedKmh, 0);
+      var climbSlope = toNumber(state.calculator.climbPowerSlopePercent, 0);
+      var climbCadence = cadenceFromSpeed(climbSpeed, minGear.chainring, minGear.cog, wheelCircumference);
+      result = {
+        value: formatNumber(totalPower(climbSpeed, climbSlope, cdaForPosition("hoods")), 1) + " W",
+        hint: "当前最小齿比 " + minGear.chainring + "/" + minGear.cog + " = " + formatNumber(gearRatio(minGear.chainring, minGear.cog), 2) + "，对应踏频约 " + formatNumber(climbCadence, 0) + " r/min。"
+      };
+      fieldsClassName = "controls-stack";
+      fields = [
+        inlineNumberField("data-calculator-input", "climbPowerSpeedKmh", "目标速度", state.calculator.climbPowerSpeedKmh, "km/h")
+      ];
+      beforeResultContent = rangeField(
+        "data-calculator-range",
+        "climbPowerSlopePercent",
+        "坡度",
+        state.calculator.climbPowerSlopePercent,
+        0,
+        25,
+        0.5,
+        "%"
+      );
     } else if (mode === "theorySpeed") {
       result = {
         value: formatNumber(speedFromCadence(
@@ -853,7 +896,8 @@
       "</div>",
       '<div class="calc-card">',
       '<div class="calc-card__title">' + escapeHtml(modeMeta.title) + "</div>",
-      '<div class="controls-line">' + fields.join("") + "</div>",
+      '<div class="' + fieldsClassName + '">' + fields.join("") + "</div>",
+      beforeResultContent,
       result ? renderMetricCard("计算结果", result.value, result.hint) : "",
       extraContent,
       "</div>",
@@ -1000,6 +1044,18 @@
     ].join("");
   }
 
+  function rangeField(action, key, label, value, min, max, step, suffix) {
+    return [
+      '<label class="range-card">',
+      '<div class="range-card__meta">',
+      '<span class="range-card__label">' + escapeHtml(label) + "</span>",
+      '<span class="range-card__value">' + escapeHtml(value) + (suffix ? " " + escapeHtml(suffix) : "") + "</span>",
+      "</div>",
+      '<input class="range-card__input" type="range" min="' + escapeHtml(min) + '" max="' + escapeHtml(max) + '" step="' + escapeHtml(step) + '" value="' + escapeHtml(value) + '" ' + action + '="' + escapeHtml(key) + '">',
+      "</label>"
+    ].join("");
+  }
+
   function inlineTeethSelect(action, key, label, options, selected) {
     return [
       '<label class="inline-field">',
@@ -1078,6 +1134,16 @@
         draft.cadenceTable[target.getAttribute("data-cadence-table-input")] = target.value;
       });
       return;
+    }
+  });
+
+  document.addEventListener("input", function (event) {
+    var target = event.target;
+
+    if (target.matches("[data-calculator-range]")) {
+      updateState(function (draft) {
+        draft.calculator[target.getAttribute("data-calculator-range")] = target.value;
+      });
     }
   });
 
