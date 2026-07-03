@@ -234,6 +234,10 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.controls-line--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .controls-line--wide {
   align-items: end;
 }
@@ -471,7 +475,7 @@ button {
 }
 
 .table-shell {
-  overflow-x: auto;
+  overflow-x: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
@@ -479,15 +483,17 @@ button {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 420px;
+  min-width: 0;
+  table-layout: fixed;
   background: rgba(8, 18, 31, 0.22);
 }
 
 .data-table th,
 .data-table td {
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   text-align: left;
+  white-space: nowrap;
 }
 
 .data-table th {
@@ -495,6 +501,10 @@ button {
   font-weight: 600;
   font-size: 13px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.data-table td {
+  font-size: 13px;
 }
 
 .data-table td:last-child,
@@ -509,6 +519,21 @@ button {
 
 .data-table tr:last-child td {
   border-bottom: 0;
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  width: 24%;
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  width: 22%;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  width: 34%;
 }
 
 .tabbar {
@@ -644,6 +669,10 @@ button {
   .controls-line,
   .controls-line--wide {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .controls-line--pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inline-field__label,

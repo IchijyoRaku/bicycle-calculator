@@ -3,7 +3,6 @@
 
   var STORAGE_KEY = "noby-bicycle-pwa-state-v2";
   var GRAVITY = 9.8;
-  var CHART_COLORS = ["#5bc0ff", "#6fe6a8", "#ffcc66", "#ff8aa1", "#c79cff", "#8be0ff"];
   var POSITIONS = [
     { key: "hoods", label: "手变位", cda: 0.343 },
     { key: "drops", label: "下把位", cda: 0.332 },
@@ -14,8 +13,7 @@
   ];
   var SECTION_OPTIONS = [
     { key: "calculator", label: "计算器功能" },
-    { key: "powerCurve", label: "功率-车速曲线" },
-    { key: "cadenceTable", label: "踏频-车速速查" }
+    { key: "cadenceTable", label: "齿比-车速计算" }
   ];
   var TAB_OPTIONS = [
     { key: "results", label: "计算结果", icon: "results" },
@@ -28,15 +26,58 @@
     { key: "targetCog", label: "所需飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" }
   ];
 
+  function presetId(prefix, label) {
+    return prefix + "-" + String(label).toLowerCase().replace(/t/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function makeCassetteGroup(id, label, presets) {
+    return {
+      id: id,
+      label: label,
+      options: presets.map(function (preset) {
+        return {
+          id: presetId(id, preset[0]),
+          label: preset[0],
+          cogs: preset[1]
+        };
+      })
+    };
+  }
+
+  function makeWheelGroup(id, label, presets) {
+    return {
+      id: id,
+      label: label,
+      options: presets.map(function (preset) {
+        return {
+          id: preset[2] || presetId("wheel", String(preset[0]).replace(/([0-9])([a-z])$/i, "$1")),
+          label: preset[0],
+          circumferenceMm: preset[1]
+        };
+      })
+    };
+  }
+
   function createDefaultChainringGroups() {
+    var singleOptions = [];
+    for (var tooth = 20; tooth <= 60; tooth += 1) {
+      singleOptions.push({ id: "single-" + tooth, label: tooth + "T", chainrings: [tooth] });
+    }
+
     return [
       {
         id: "road-double",
         label: "公路双盘",
         options: [
+          { id: "road-56-44", label: "56-44T", chainrings: [56, 44] },
+          { id: "road-55-42", label: "55-42T", chainrings: [55, 42] },
+          { id: "road-54-42", label: "54-42T", chainrings: [54, 42] },
+          { id: "road-54-40", label: "54-40T", chainrings: [54, 40] },
           { id: "road-53-39", label: "53-39T", chainrings: [53, 39] },
           { id: "road-52-36", label: "52-36T", chainrings: [52, 36] },
+          { id: "road-50-37", label: "50-37T", chainrings: [50, 37] },
           { id: "road-50-34", label: "50-34T", chainrings: [50, 34] },
+          { id: "road-48-34", label: "48-34T", chainrings: [48, 34] },
           { id: "road-48-35", label: "48-35T", chainrings: [48, 35] },
           { id: "road-46-33", label: "46-33T", chainrings: [46, 33] }
         ]
@@ -53,16 +94,7 @@
       {
         id: "single",
         label: "单盘",
-        options: [
-          { id: "single-54", label: "54T", chainrings: [54] },
-          { id: "single-52", label: "52T", chainrings: [52] },
-          { id: "single-50", label: "50T", chainrings: [50] },
-          { id: "single-48", label: "48T", chainrings: [48] },
-          { id: "single-46", label: "46T", chainrings: [46] },
-          { id: "single-44", label: "44T", chainrings: [44] },
-          { id: "single-42", label: "42T", chainrings: [42] },
-          { id: "single-40", label: "40T", chainrings: [40] }
-        ]
+        options: singleOptions
       },
       {
         id: "custom",
@@ -74,52 +106,88 @@
 
   function createDefaultCassetteGroups() {
     return [
-      {
-        id: "9s",
-        label: "9S",
-        options: [
-          { id: "9s-11-25", label: "11-25T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 25] },
-          { id: "9s-11-28-even", label: "11-12-15-17-19-21-23-25-28", cogs: [11, 12, 15, 17, 19, 21, 23, 25, 28] },
-          { id: "9s-11-28", label: "11-28T", cogs: [11, 12, 13, 14, 16, 18, 21, 24, 28] },
-          { id: "9s-11-30", label: "11-30T", cogs: [11, 12, 14, 16, 18, 21, 24, 27, 30] }
-        ]
-      },
-      {
-        id: "10s",
-        label: "10S",
-        options: [
-          { id: "10s-11-25", label: "11-25T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 23, 25] },
-          { id: "10s-11-28", label: "11-28T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24, 28] },
-          { id: "10s-11-32", label: "11-32T", cogs: [11, 12, 14, 16, 18, 20, 22, 25, 28, 32] },
-          { id: "10s-12-28", label: "12-28T", cogs: [12, 13, 14, 15, 17, 19, 21, 23, 25, 28] }
-        ]
-      },
-      {
-        id: "11s",
-        label: "11S",
-        options: [
-          { id: "11s-11-25", label: "11-25T", cogs: [11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 25] },
-          { id: "11s-11-28", label: "11-28T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 23, 25, 28] },
-          { id: "11s-11-30", label: "11-30T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30] },
-          { id: "11s-11-32", label: "11-32T", cogs: [11, 12, 13, 14, 16, 18, 20, 22, 25, 28, 32] },
-          { id: "11s-11-34", label: "11-34T", cogs: [11, 13, 15, 17, 19, 21, 23, 25, 27, 30, 34] },
-          { id: "11s-12-25", label: "12-25T", cogs: [12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25] }
-        ]
-      },
-      {
-        id: "12s",
-        label: "12S",
-        options: [
-          { id: "12s-11-28", label: "11-28T", cogs: [11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 25, 28] },
-          { id: "12s-11-30", label: "11-30T", cogs: [11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 27, 30] },
-          { id: "12s-11-32", label: "11-32T", cogs: [11, 12, 13, 14, 15, 17, 19, 21, 23, 26, 29, 32] },
-          { id: "12s-11-34", label: "11-34T", cogs: [11, 12, 13, 15, 17, 19, 21, 23, 25, 27, 30, 34] },
-          { id: "12s-10-28", label: "10-28T", cogs: [10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 28] },
-          { id: "12s-10-30", label: "10-30T", cogs: [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30] },
-          { id: "12s-10-33", label: "10-33T", cogs: [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 33] },
-          { id: "12s-10-36", label: "10-36T", cogs: [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 32, 36] }
-        ]
-      },
+      makeCassetteGroup("7s", "7S", [
+        ["10-24T", [10, 12, 14, 16, 18, 21, 24]],
+        ["11-25T", [11, 13, 15, 17, 19, 22, 25]],
+        ["12-32T", [12, 14, 16, 18, 21, 26, 32]]
+      ]),
+      makeCassetteGroup("8s", "8S", [
+        ["11-28T", [11, 13, 15, 17, 19, 21, 24, 28]],
+        ["11-30T", [11, 13, 15, 17, 20, 23, 26, 30]],
+        ["11-32T", [11, 13, 15, 18, 21, 24, 28, 32]],
+        ["11-34T", [11, 13, 15, 18, 21, 24, 28, 34]],
+        ["11-40T", [11, 13, 15, 18, 22, 27, 33, 40]],
+        ["11-48T", [11, 13, 15, 18, 24, 32, 40, 48]],
+        ["12-23T", [12, 13, 14, 15, 17, 19, 21, 23]],
+        ["12-25T", [12, 13, 15, 17, 19, 21, 23, 25]],
+        ["12-26T", [12, 13, 15, 17, 19, 21, 23, 26]],
+        ["13-26T", [13, 14, 15, 17, 19, 21, 23, 26]]
+      ]),
+      makeCassetteGroup("9s", "9S", [
+        ["11-25T", [11, 12, 13, 15, 17, 19, 21, 23, 25]],
+        ["11-26T", [11, 13, 14, 15, 17, 19, 21, 23, 26]],
+        ["11-28T", [11, 12, 15, 17, 19, 21, 23, 25, 28]],
+        ["11-30T", [11, 12, 14, 16, 18, 20, 23, 26, 30]],
+        ["11-32T", [11, 13, 15, 17, 19, 21, 24, 28, 32]],
+        ["11-34T", [11, 13, 15, 17, 20, 23, 26, 30, 34]],
+        ["11-36T", [11, 13, 15, 17, 20, 23, 26, 30, 36]],
+        ["12-23T", [12, 13, 14, 15, 16, 17, 19, 21, 23]],
+        ["12-25T", [12, 13, 14, 15, 17, 19, 21, 23, 25]],
+        ["12-26T", [12, 13, 14, 15, 17, 18, 21, 23, 26]],
+        ["13-25T", [13, 14, 15, 16, 17, 19, 21, 23, 25]],
+        ["14-25T", [14, 15, 16, 17, 18, 19, 21, 23, 25]]
+      ]),
+      makeCassetteGroup("10s", "10S", [
+        ["11-23T", [11, 12, 13, 14, 15, 16, 17, 19, 21, 23]],
+        ["11-25T", [11, 12, 13, 14, 15, 17, 19, 21, 23, 25]],
+        ["11-26T", [11, 12, 13, 14, 15, 17, 19, 21, 23, 26]],
+        ["11-28T", [11, 12, 13, 14, 15, 17, 19, 21, 24, 28]],
+        ["11-32T", [11, 12, 14, 16, 18, 20, 22, 25, 28, 32]],
+        ["11-34T", [11, 13, 15, 17, 19, 21, 23, 26, 30, 34]],
+        ["11-36T", [11, 13, 15, 17, 19, 21, 24, 28, 32, 36]],
+        ["11-42T", [11, 13, 15, 18, 21, 24, 28, 32, 37, 42]],
+        ["11-43T", [11, 13, 15, 17, 20, 23, 26, 30, 36, 43]],
+        ["11-46T", [11, 13, 15, 18, 21, 24, 28, 32, 37, 46]],
+        ["12-25T", [12, 13, 14, 15, 16, 17, 19, 21, 23, 25]],
+        ["12-26T", [12, 13, 14, 15, 16, 17, 19, 21, 23, 26]],
+        ["12-27T", [12, 13, 14, 15, 16, 17, 19, 21, 24, 27]],
+        ["12-28T", [12, 13, 14, 15, 17, 19, 21, 23, 25, 28]],
+        ["12-30T", [12, 13, 14, 15, 17, 19, 21, 24, 27, 30]],
+        ["12-32T", [12, 13, 14, 15, 17, 19, 22, 25, 28, 32]],
+        ["12-36T", [12, 13, 15, 17, 19, 22, 25, 28, 32, 36]]
+      ]),
+      makeCassetteGroup("11s", "11S", [
+        ["10-42T", [10, 12, 14, 16, 18, 21, 24, 28, 32, 36, 42]],
+        ["11-23T", [11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23]],
+        ["11-25T", [11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 25]],
+        ["11-26T", [11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 26]],
+        ["11-28T", [11, 12, 13, 14, 15, 17, 19, 21, 23, 25, 28]],
+        ["11-30T", [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30]],
+        ["11-32T", [11, 12, 13, 14, 16, 18, 20, 22, 25, 28, 32]],
+        ["11-34T", [11, 13, 15, 17, 19, 21, 23, 25, 27, 30, 34]],
+        ["11-36T", [11, 12, 13, 15, 17, 19, 22, 25, 28, 32, 36]],
+        ["11-40T", [11, 13, 15, 17, 19, 21, 24, 27, 31, 35, 40]],
+        ["11-42T", [11, 13, 15, 17, 19, 21, 24, 28, 32, 37, 42]],
+        ["11-51T", [11, 13, 15, 18, 21, 24, 28, 33, 39, 45, 51]],
+        ["12-25T", [12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25]],
+        ["12-28T", [12, 13, 14, 15, 16, 17, 19, 21, 23, 25, 28]]
+      ]),
+      makeCassetteGroup("12s", "12S", [
+        ["10-26T", [10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 26]],
+        ["10-28T", [10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 28]],
+        ["10-30T", [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30]],
+        ["10-33T", [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 33]],
+        ["10-36T", [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 32, 36]],
+        ["10-44T", [10, 11, 13, 15, 17, 19, 21, 24, 28, 32, 38, 44]],
+        ["10-45T", [10, 12, 14, 16, 18, 21, 24, 28, 32, 36, 40, 45]],
+        ["10-50T", [10, 12, 14, 16, 18, 21, 24, 28, 32, 36, 42, 50]],
+        ["10-51T", [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 51]],
+        ["10-52T", [10, 12, 14, 16, 18, 21, 24, 28, 32, 36, 42, 52]],
+        ["11-30T", [11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 27, 30]],
+        ["11-34T", [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]],
+        ["11-36T", [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32, 36]],
+        ["11-50T", [11, 13, 15, 17, 19, 22, 25, 28, 32, 36, 42, 50]]
+      ]),
       {
         id: "custom",
         label: "自定义",
@@ -130,35 +198,58 @@
 
   function createDefaultWheelGroups() {
     return [
-      {
-        id: "road",
-        label: "公路常用",
-        options: [
-          { id: "wheel-700x23", label: "700x23C", circumferenceMm: 2096 },
-          { id: "wheel-700x25", label: "700x25C", circumferenceMm: 2110 },
-          { id: "wheel-700x28", label: "700x28C", circumferenceMm: 2136 },
-          { id: "wheel-700x30", label: "700x30C", circumferenceMm: 2146 },
-          { id: "wheel-700x32", label: "700x32C", circumferenceMm: 2155 }
-        ]
-      },
-      {
-        id: "gravel",
-        label: "Gravel / 通勤",
-        options: [
-          { id: "wheel-700x35", label: "700x35C", circumferenceMm: 2178 },
-          { id: "wheel-700x40", label: "700x40C", circumferenceMm: 2200 },
-          { id: "wheel-650x47", label: "650x47B", circumferenceMm: 2070 }
-        ]
-      },
-      {
-        id: "mtb",
-        label: "山地 / 旅行",
-        options: [
-          { id: "wheel-26x2.1", label: "26x2.1", circumferenceMm: 2055 },
-          { id: "wheel-27.5x2.1", label: "27.5x2.1", circumferenceMm: 2190 },
-          { id: "wheel-29x2.1", label: "29x2.1", circumferenceMm: 2290 }
-        ]
-      },
+      makeWheelGroup("wheel-650", "650 / 650B", [
+        ["650x35A", 2090],
+        ["650x38A", 2120],
+        ["650x38B", 2105],
+        ["650x47B", 2070, "wheel-650x47"]
+      ]),
+      makeWheelGroup("wheel-700c", "700C", [
+        ["700x18C", 2070],
+        ["700x19C", 2080],
+        ["700x20C", 2086],
+        ["700x23C", 2096],
+        ["700x25C", 2105],
+        ["700x28C", 2136],
+        ["700x30C", 2146],
+        ["700x32C", 2155],
+        ["700x35C", 2168],
+        ["700x38C", 2180],
+        ["700x40C", 2200],
+        ["700C 管胎", 2130]
+      ]),
+      makeWheelGroup("wheel-26", '26"', [
+        ["26x7/8", 1920],
+        ["26x1(59)", 1913],
+        ["26x1(65)", 1952],
+        ["26x1.25", 1953],
+        ["26x1-1/8", 1970],
+        ["26x1-3/8", 2068],
+        ["26x1-1/2", 2100],
+        ["26x1.40", 2005],
+        ["26x1.50", 2010],
+        ["26x1.75", 2023],
+        ["26x1.95", 2050],
+        ["26x2.00", 2055],
+        ["26x2.10", 2068, "wheel-26x2.1"],
+        ["26x2.125", 2070],
+        ["26x2.35", 2083],
+        ["26x3.00", 2170]
+      ]),
+      makeWheelGroup("wheel-27", '27"', [
+        ["27x1", 2145],
+        ["27x1-1/8", 2155],
+        ["27x1-1/4", 2161],
+        ["27x1-3/8", 2169]
+      ]),
+      makeWheelGroup("wheel-27-5", '27.5"', [
+        ["27.5x2.10", 2170, "wheel-27.5x2.1"],
+        ["27.5x2.30", 2202]
+      ]),
+      makeWheelGroup("wheel-29", '29"', [
+        ["29x2.10", 2288, "wheel-29x2.1"],
+        ["29x2.30", 2326]
+      ]),
       {
         id: "custom",
         label: "自定义",
@@ -197,14 +288,10 @@
         speedToPowerPosition: "hoods",
         selectedChainringTeeth: 50,
         selectedCogTeeth: 17,
-        cadenceOverride: "",
+        cadenceOverride: "90",
         targetSpeedKmh: "35",
         targetCogChainringTeeth: 50,
-        targetCogCadenceRpm: ""
-      },
-      powerCurve: {
-        slopePercent: 0,
-        selectedPositions: ["hoods"]
+        targetCogCadenceRpm: "90"
       },
       cadenceTable: {
         selectedChainringTeeth: 50,
@@ -235,30 +322,93 @@
     return findOptionById(groups, optionId) || firstOption(groups);
   }
 
+  function cloneGroups(groups) {
+    return (groups || []).map(function (group) {
+      return {
+        id: group.id,
+        label: group.label,
+        options: (group.options || []).map(function (option) {
+          return Object.assign({}, option);
+        })
+      };
+    });
+  }
+
+  function mergePresetGroups(baseGroups, savedGroups, removedIds) {
+    var removedMap = {};
+    (removedIds || []).forEach(function (id) {
+      removedMap[id] = true;
+    });
+
+    var merged = cloneGroups(baseGroups);
+    var groupMap = {};
+    merged.forEach(function (group, index) {
+      groupMap[group.id] = index;
+      group.options = (group.options || []).filter(function (option) {
+        return option && option.id && !removedMap[option.id];
+      });
+    });
+
+    (savedGroups || []).forEach(function (group) {
+      if (!group || !group.id) return;
+
+      if (groupMap[group.id] === undefined) {
+        groupMap[group.id] = merged.length;
+        merged.push({
+          id: group.id,
+          label: group.label || group.id,
+          options: []
+        });
+      }
+
+      var targetGroup = merged[groupMap[group.id]];
+      var existingIds = {};
+      (targetGroup.options || []).forEach(function (option) {
+        existingIds[option.id] = true;
+      });
+
+      (group.options || []).forEach(function (option) {
+        if (!option || !option.id || removedMap[option.id] || existingIds[option.id]) return;
+        existingIds[option.id] = true;
+        targetGroup.options.push(Object.assign({}, option));
+      });
+    });
+
+    return merged;
+  }
+
   function normalizeState(input) {
     var base = defaultState();
+    var inputSettings = input.settings || {};
     var merged = {
       currentTab: input.currentTab || base.currentTab,
       currentSection: input.currentSection || base.currentSection,
       settings: Object.assign({}, base.settings, input.settings || {}),
       calculator: Object.assign({}, base.calculator, input.calculator || {}),
-      powerCurve: Object.assign({}, base.powerCurve, input.powerCurve || {}),
       cadenceTable: Object.assign({}, base.cadenceTable, input.cadenceTable || {}),
       uiMessage: ""
     };
 
-    if (!Array.isArray(merged.settings.chainringGroups) || !flattenOptions(merged.settings.chainringGroups).length) {
-      merged.settings.chainringGroups = base.settings.chainringGroups;
+    merged.settings.chainringGroups = mergePresetGroups(
+      base.settings.chainringGroups,
+      Array.isArray(inputSettings.chainringGroups) ? inputSettings.chainringGroups : []
+    );
+    merged.settings.cassetteGroups = mergePresetGroups(
+      base.settings.cassetteGroups,
+      Array.isArray(inputSettings.cassetteGroups) ? inputSettings.cassetteGroups : [],
+      ["9s-11-28-even"]
+    );
+    merged.settings.wheelGroups = mergePresetGroups(
+      base.settings.wheelGroups,
+      Array.isArray(inputSettings.wheelGroups) ? inputSettings.wheelGroups : []
+    );
+
+    if (!SECTION_OPTIONS.some(function (section) { return section.key === merged.currentSection; })) {
+      merged.currentSection = base.currentSection;
     }
-    if (!Array.isArray(merged.settings.cassetteGroups) || !flattenOptions(merged.settings.cassetteGroups).length) {
-      merged.settings.cassetteGroups = base.settings.cassetteGroups;
-    }
-    if (!Array.isArray(merged.settings.wheelGroups) || !flattenOptions(merged.settings.wheelGroups).length) {
-      merged.settings.wheelGroups = base.settings.wheelGroups;
-    }
-    if (!Array.isArray(merged.powerCurve.selectedPositions) || !merged.powerCurve.selectedPositions.length) {
-      merged.powerCurve.selectedPositions = ["hoods"];
-    }
+    if (!merged.calculator.cadenceOverride) merged.calculator.cadenceOverride = String(merged.settings.defaultCadenceRpm);
+    if (!merged.calculator.targetCogCadenceRpm) merged.calculator.targetCogCadenceRpm = String(merged.settings.defaultCadenceRpm);
+    if (!merged.cadenceTable.cadenceRpm) merged.cadenceTable.cadenceRpm = String(merged.settings.defaultCadenceRpm);
 
     syncSelections(merged);
     return merged;
@@ -334,14 +484,6 @@
     if (typeof value === "string" && value.trim() === "") return fallback;
     var number = Number(value);
     return Number.isFinite(number) ? number : fallback;
-  }
-
-  function buildRange(start, end, step, mapper) {
-    var list = [];
-    for (var value = start; value <= end; value += step) {
-      list.push(mapper(value));
-    }
-    return list;
   }
 
   function positionByKey(key) {
@@ -420,21 +562,6 @@
       }
       return best;
     }, cassette[0]);
-  }
-
-  function powerCurveSeries() {
-    var slope = Number(state.powerCurve.slopePercent) || 0;
-    return state.powerCurve.selectedPositions.map(function (positionKey) {
-      return {
-        label: positionByKey(positionKey).label,
-        points: buildRange(8, 60, 2, function (speed) {
-          return {
-            x: speed,
-            y: totalPower(speed, slope, cdaForPosition(positionKey))
-          };
-        })
-      };
-    });
   }
 
   function cadenceTableRows() {
@@ -607,7 +734,6 @@
   }
 
   function renderResultsPage() {
-    if (state.currentSection === "powerCurve") return renderPowerCurveSection();
     if (state.currentSection === "cadenceTable") return renderCadenceTableSection();
     return renderCalculatorSection();
   }
@@ -657,7 +783,7 @@
           state.calculator.selectedCogTeeth,
           wheelCircumference
         ), 1) + " km/h",
-        hint: "留空踏频时，自动使用常用踏频 " + formatNumber(state.settings.defaultCadenceRpm, 0) + " r/min。"
+        hint: "默认踏频已预填 " + formatNumber(state.settings.defaultCadenceRpm, 0) + " r/min，可直接修改。"
       };
       fields = [
         inlineTeethSelect("data-calculator-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.calculator.selectedChainringTeeth),
@@ -705,54 +831,21 @@
     ].join("");
   }
 
-  function renderPowerCurveSection() {
-    var series = powerCurveSeries();
-    return [
-      '<section class="panel">',
-      '<div class="panel__header">',
-      '<div>',
-      '<p class="panel__eyebrow">Power Curve</p>',
-      '<h2 class="panel__title">功率-车速曲线</h2>',
-      '<p class="panel__desc">坡度范围 -15% 到 25%，默认只显示手变位；点击下方姿势可叠加其它曲线。</p>',
-      "</div>",
-      '<div class="status-chip">' + escapeHtml(currentWheelOption().label) + " · " + formatNumber(state.settings.riderBikeMassKg, 1) + ' kg</div>',
-      "</div>",
-      '<div class="controls-stack">',
-      '<label class="range-card">',
-      '<span class="range-card__label">坡度</span>',
-      '<strong class="range-card__value">' + formatNumber(state.powerCurve.slopePercent, 1) + '%</strong>',
-      '<input class="range-card__input" type="range" min="-15" max="25" step="0.5" value="' + escapeHtml(state.powerCurve.slopePercent) + '" data-power-slope="1">',
-      "</label>",
-      '<div class="chip-row">',
-      POSITIONS.map(function (position) {
-        var active = state.powerCurve.selectedPositions.indexOf(position.key) !== -1;
-        return '<button class="chip' + (active ? " is-active" : "") + '" type="button" data-toggle-position="' + position.key + '">' + escapeHtml(position.label) + "</button>";
-      }).join(""),
-      "</div>",
-      renderSvgChart(series, "速度 km/h", "功率 W"),
-      "</div>",
-      "</section>"
-    ].join("");
-  }
-
   function renderCadenceTableSection() {
     var rows = cadenceTableRows();
-    var cadence = toNumber(state.cadenceTable.cadenceRpm, state.settings.defaultCadenceRpm);
     return [
       '<section class="panel">',
       '<div class="panel__header">',
       '<div>',
-      '<p class="panel__eyebrow">Cadence Table</p>',
-      '<h2 class="panel__title">踏频-车速速查</h2>',
-      '<p class="panel__desc">把原来的踏频曲线与齿比分析合并为纯数据模式，直接看当前牙盘、飞轮和踏频下的齿比与速度。</p>',
+      '<p class="panel__eyebrow">Gear Calculator</p>',
+      '<h2 class="panel__title">齿比-车速计算</h2>',
+      '<p class="panel__desc">按所选轮组周长、牙盘和踏频，直接输出每片飞轮的齿比与理论速度。</p>',
       "</div>",
       "</div>",
-      '<div class="controls-line controls-line--wide">',
+      '<div class="controls-line controls-line--pair controls-line--wide">',
       inlineTeethSelect("data-cadence-table-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.cadenceTable.selectedChainringTeeth),
       inlineNumberField("data-cadence-table-input", "cadenceRpm", "踏频", state.cadenceTable.cadenceRpm, "r/min"),
-      renderInfoTile("当前轮组", currentWheelOption().label),
       "</div>",
-      renderMetricCard("当前查表基准", formatNumber(cadence, 0) + " r/min", currentCassetteOption().label + " · 共 " + currentCassetteOption().cogs.length + " 片飞轮"),
       '<div class="table-shell">',
       '<table class="data-table">',
       '<thead><tr><th>飞轮</th><th>齿比</th><th>速度</th></tr></thead>',
@@ -819,89 +912,6 @@
       '<div class="metric-card__label">' + escapeHtml(label) + "</div>",
       '<div class="metric-card__value">' + escapeHtml(value) + "</div>",
       '<div class="metric-card__hint">' + escapeHtml(hint) + "</div>",
-      "</div>"
-    ].join("");
-  }
-
-  function renderInfoTile(label, value) {
-    return [
-      '<div class="info-tile">',
-      '<span class="info-tile__label">' + escapeHtml(label) + "</span>",
-      '<strong class="info-tile__value">' + escapeHtml(value) + "</strong>",
-      "</div>"
-    ].join("");
-  }
-
-  function renderSvgChart(series, xLabel, yLabel) {
-    if (!series.length) {
-      return '<div class="empty">至少保留一条曲线。</div>';
-    }
-
-    var width = 720;
-    var height = 320;
-    var padLeft = 58;
-    var padRight = 22;
-    var padTop = 24;
-    var padBottom = 42;
-    var plotWidth = width - padLeft - padRight;
-    var plotHeight = height - padTop - padBottom;
-    var allPoints = series.reduce(function (list, item) {
-      return list.concat(item.points);
-    }, []);
-    var minX = allPoints.reduce(function (acc, point) { return Math.min(acc, point.x); }, allPoints[0].x);
-    var maxX = allPoints.reduce(function (acc, point) { return Math.max(acc, point.x); }, allPoints[0].x);
-    var rawMinY = allPoints.reduce(function (acc, point) { return Math.min(acc, point.y); }, allPoints[0].y);
-    var rawMaxY = allPoints.reduce(function (acc, point) { return Math.max(acc, point.y); }, allPoints[0].y);
-    var minY = Math.floor(Math.min(0, rawMinY) / 50) * 50;
-    var maxY = Math.ceil(rawMaxY / 50) * 50;
-    if (minY === maxY) {
-      maxY += 50;
-    }
-
-    var yTicks = 5;
-    var xTicks = 5;
-    var svgLines = [];
-    var svgLabels = [];
-
-    for (var row = 0; row <= yTicks; row += 1) {
-      var y = padTop + (plotHeight / yTicks) * row;
-      var yValue = maxY - ((maxY - minY) / yTicks) * row;
-      svgLines.push('<line x1="' + padLeft + '" y1="' + y + '" x2="' + (padLeft + plotWidth) + '" y2="' + y + '" class="chart-grid" />');
-      svgLabels.push('<text x="' + (padLeft - 10) + '" y="' + (y + 4) + '" class="chart-axis chart-axis--left">' + formatNumber(yValue, 0) + "</text>");
-    }
-
-    for (var column = 0; column <= xTicks; column += 1) {
-      var x = padLeft + (plotWidth / xTicks) * column;
-      var xValue = minX + ((maxX - minX) / xTicks) * column;
-      svgLines.push('<line x1="' + x + '" y1="' + padTop + '" x2="' + x + '" y2="' + (padTop + plotHeight) + '" class="chart-grid chart-grid--vertical" />');
-      svgLabels.push('<text x="' + x + '" y="' + (padTop + plotHeight + 24) + '" class="chart-axis chart-axis--bottom">' + formatNumber(xValue, 0) + "</text>");
-    }
-
-    var curves = series.map(function (item, index) {
-      var points = item.points.map(function (point) {
-        var plotX = padLeft + ((point.x - minX) / Math.max(maxX - minX, 1)) * plotWidth;
-        var plotY = padTop + plotHeight - ((point.y - minY) / Math.max(maxY - minY, 1)) * plotHeight;
-        return formatNumber(plotX, 2) + "," + formatNumber(plotY, 2);
-      }).join(" ");
-      return '<polyline fill="none" stroke="' + CHART_COLORS[index % CHART_COLORS.length] + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="' + points + '" />';
-    }).join("");
-
-    return [
-      '<div class="chart-shell">',
-      '<svg viewBox="0 0 ' + width + " " + height + '" class="chart-svg" role="img" aria-label="' + escapeHtml(xLabel + " / " + yLabel) + '">',
-      svgLines.join(""),
-      '<line x1="' + padLeft + '" y1="' + padTop + '" x2="' + padLeft + '" y2="' + (padTop + plotHeight) + '" class="chart-axis-line" />',
-      '<line x1="' + padLeft + '" y1="' + (padTop + plotHeight) + '" x2="' + (padLeft + plotWidth) + '" y2="' + (padTop + plotHeight) + '" class="chart-axis-line" />',
-      curves,
-      svgLabels.join(""),
-      '<text x="' + (padLeft + plotWidth / 2) + '" y="' + (height - 6) + '" class="chart-axis-title">' + escapeHtml(xLabel) + "</text>",
-      '<text x="18" y="' + (padTop + plotHeight / 2) + '" transform="rotate(-90 18 ' + (padTop + plotHeight / 2) + ')" class="chart-axis-title">' + escapeHtml(yLabel) + "</text>",
-      "</svg>",
-      '<div class="legend">',
-      series.map(function (item, index) {
-        return '<span class="legend__item"><span class="legend__dot" style="background:' + CHART_COLORS[index % CHART_COLORS.length] + '"></span>' + escapeHtml(item.label) + "</span>";
-      }).join(""),
-      "</div>",
       "</div>"
     ].join("");
   }
@@ -991,15 +1001,6 @@
     ].join("");
   }
 
-  document.addEventListener("input", function (event) {
-    var target = event.target;
-    if (target.matches("[data-power-slope]")) {
-      updateState(function (draft) {
-        draft.powerCurve.slopePercent = Number(target.value);
-      });
-    }
-  });
-
   document.addEventListener("change", function (event) {
     var target = event.target;
 
@@ -1064,7 +1065,6 @@
     var target = event.target;
     var tabButton = target.closest("[data-tab]");
     var modeButton = target.closest("[data-calculator-mode]");
-    var togglePositionButton = target.closest("[data-toggle-position]");
     var addChainringButton = target.closest("[data-add-chainring]");
     var addCassetteButton = target.closest("[data-add-cassette]");
     var addWheelButton = target.closest("[data-add-wheel]");
@@ -1079,19 +1079,6 @@
     if (modeButton) {
       updateState(function (draft) {
         draft.calculator.mode = modeButton.getAttribute("data-calculator-mode");
-      });
-      return;
-    }
-
-    if (togglePositionButton) {
-      var key = togglePositionButton.getAttribute("data-toggle-position");
-      updateState(function (draft) {
-        var index = draft.powerCurve.selectedPositions.indexOf(key);
-        if (index === -1) {
-          draft.powerCurve.selectedPositions.push(key);
-        } else if (draft.powerCurve.selectedPositions.length > 1) {
-          draft.powerCurve.selectedPositions.splice(index, 1);
-        }
       });
       return;
     }
