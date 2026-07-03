@@ -1,0 +1,17 @@
+{
+  "name": "诺比单车分析器",
+  "short_name": "单车分析",
+  "description": "公路车齿比、功率、坡度、踏频与车速分析工具",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5F8FF",
+  "theme_color": "#0B57D0",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "16x16 32x32 48x48 64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
