@@ -16,11 +16,11 @@
     { key: "settings", label: "数据设定", icon: "settings" }
   ];
   var CALCULATOR_MODES = [
-    { key: "powerToSpeed", label: "功率算速度", title: "根据功率、坡度计算速度" },
-    { key: "speedToPower", label: "速度算功率", title: "根据速度、坡度计算功率" },
+    { key: "powerToSpeed", label: "功率->速度", title: "根据功率、坡度计算速度" },
+    { key: "speedToPower", label: "速度->功率", title: "根据速度、坡度计算功率" },
     { key: "theorySpeed", label: "理论速度", title: "根据牙盘、飞轮、踏频计算理论速度" },
-    { key: "targetCog", label: "所需飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" },
-    { key: "gearSpeed", label: "齿比-车速", title: "快速查看当前飞轮各齿位的齿比与理论速度" }
+    { key: "targetCog", label: "速度->飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" },
+    { key: "gearSpeed", label: "齿比->车速", title: "快速查看当前飞轮各齿位的齿比与理论速度" }
   ];
 
   function presetId(prefix, label) {
@@ -755,7 +755,6 @@
     var cadence = toNumber(state.calculator.cadenceOverride, state.settings.defaultCadenceRpm);
     var targetCadence = toNumber(state.calculator.targetCogCadenceRpm, state.settings.defaultCadenceRpm);
     var gearSpeedRows = cadenceTableRows();
-    var gearSpeedCadence = toNumber(state.cadenceTable.cadenceRpm, state.settings.defaultCadenceRpm);
     var mode = state.calculator.mode;
     var modeMeta = CALCULATOR_MODES.find(function (item) { return item.key === mode; }) || CALCULATOR_MODES[0];
     var result = null;
@@ -839,10 +838,6 @@
           "</tbody></table>",
           "</div>"
         ].join("");
-        result = {
-          value: formatNumber(gearSpeedCadence, 0) + " r/min",
-          hint: currentCassetteOption().label + " · 共 " + currentCassetteOption().cogs.length + " 片飞轮"
-        };
       }
     }
 
@@ -859,7 +854,7 @@
       '<div class="calc-card">',
       '<div class="calc-card__title">' + escapeHtml(modeMeta.title) + "</div>",
       '<div class="controls-line">' + fields.join("") + "</div>",
-      renderMetricCard("计算结果", result.value, result.hint),
+      result ? renderMetricCard("计算结果", result.value, result.hint) : "",
       extraContent,
       "</div>",
       "</section>"
@@ -927,8 +922,9 @@
     if (!pickerState) return "";
 
     return [
-      '<div class="picker-sheet" data-close-picker="1">',
-      '<div class="picker-sheet__surface" role="dialog" aria-modal="true" aria-label="' + escapeHtml(pickerState.title) + '" data-picker-surface="1">',
+      '<div class="picker-sheet">',
+      '<button class="picker-sheet__backdrop" type="button" aria-label="关闭规格列表" data-close-picker="1"></button>',
+      '<div class="picker-sheet__surface" role="dialog" aria-modal="true" aria-label="' + escapeHtml(pickerState.title) + '">',
       '<div class="picker-sheet__header">',
       '<div>',
       '<p class="picker-sheet__eyebrow">规格列表</p>',
@@ -945,8 +941,7 @@
           '<div class="picker-group__list">',
           group.options.map(function (option) {
             return '<button class="picker-option' + (option.id === pickerState.selectedId ? " is-active" : "") + '" type="button" data-picker-option="' + escapeHtml(option.id) + '">' +
-              '<span class="picker-option__label">' + escapeHtml(option.label) + '</span>' +
-              '<span class="picker-option__meta">' + escapeHtml(group.label) + "</span>" +
+              '<span class="picker-option__label">' + escapeHtml(option.label) + "</span>" +
             "</button>";
           }).join(""),
           "</div>",
