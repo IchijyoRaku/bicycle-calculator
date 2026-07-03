@@ -11,19 +11,16 @@
     { key: "tt", label: "TT位", cda: 0.289 },
     { key: "custom", label: "自定义CdA", cda: 0 }
   ];
-  var SECTION_OPTIONS = [
-    { key: "calculator", label: "计算器功能" },
-    { key: "cadenceTable", label: "齿比-车速计算" }
-  ];
   var TAB_OPTIONS = [
-    { key: "results", label: "计算结果", icon: "results" },
+    { key: "results", label: "计算器", icon: "results" },
     { key: "settings", label: "数据设定", icon: "settings" }
   ];
   var CALCULATOR_MODES = [
     { key: "powerToSpeed", label: "功率算速度", title: "根据功率、坡度计算速度" },
     { key: "speedToPower", label: "速度算功率", title: "根据速度、坡度计算功率" },
     { key: "theorySpeed", label: "理论速度", title: "根据牙盘、飞轮、踏频计算理论速度" },
-    { key: "targetCog", label: "所需飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" }
+    { key: "targetCog", label: "所需飞轮", title: "根据目标速度、牙盘、踏频计算所需飞轮齿数" },
+    { key: "gearSpeed", label: "齿比-车速", title: "快速查看当前飞轮各齿位的齿比与理论速度" }
   ];
 
   function presetId(prefix, label) {
@@ -261,7 +258,6 @@
   function defaultState() {
     return {
       currentTab: "results",
-      currentSection: "calculator",
       settings: {
         chainringGroups: createDefaultChainringGroups(),
         cassetteGroups: createDefaultCassetteGroups(),
@@ -382,7 +378,6 @@
     var inputSettings = input.settings || {};
     var merged = {
       currentTab: input.currentTab || base.currentTab,
-      currentSection: input.currentSection || base.currentSection,
       settings: Object.assign({}, base.settings, input.settings || {}),
       calculator: Object.assign({}, base.calculator, input.calculator || {}),
       cadenceTable: Object.assign({}, base.cadenceTable, input.cadenceTable || {}),
@@ -403,9 +398,6 @@
       Array.isArray(inputSettings.wheelGroups) ? inputSettings.wheelGroups : []
     );
 
-    if (!SECTION_OPTIONS.some(function (section) { return section.key === merged.currentSection; })) {
-      merged.currentSection = base.currentSection;
-    }
     if (!merged.calculator.cadenceOverride) merged.calculator.cadenceOverride = String(merged.settings.defaultCadenceRpm);
     if (!merged.calculator.targetCogCadenceRpm) merged.calculator.targetCogCadenceRpm = String(merged.settings.defaultCadenceRpm);
     if (!merged.cadenceTable.cadenceRpm) merged.cadenceTable.cadenceRpm = String(merged.settings.defaultCadenceRpm);
@@ -431,6 +423,8 @@
       // ignore storage failures
     }
   }
+
+  var pickerState = null;
 
   function syncSelections(targetState) {
     var chainringOption = selectedOption(targetState.settings.chainringGroups, targetState.settings.selectedChainringId);
@@ -511,6 +505,47 @@
       });
     });
     return group ? group.label : "";
+  }
+
+  function pickerConfig(settingKey) {
+    if (settingKey === "selectedChainringId") {
+      return {
+        settingKey: settingKey,
+        title: "牙盘规格",
+        groups: state.settings.chainringGroups,
+        selectedId: state.settings.selectedChainringId
+      };
+    }
+    if (settingKey === "selectedCassetteId") {
+      return {
+        settingKey: settingKey,
+        title: "飞轮规格",
+        groups: state.settings.cassetteGroups,
+        selectedId: state.settings.selectedCassetteId
+      };
+    }
+    if (settingKey === "selectedWheelId") {
+      return {
+        settingKey: settingKey,
+        title: "轮组规格",
+        groups: state.settings.wheelGroups,
+        selectedId: state.settings.selectedWheelId
+      };
+    }
+    return null;
+  }
+
+  function openPicker(settingKey) {
+    var config = pickerConfig(settingKey);
+    if (!config) return;
+    pickerState = config;
+    render();
+  }
+
+  function closePicker() {
+    if (!pickerState) return;
+    pickerState = null;
+    render();
   }
 
   function cdaForPosition(positionKey) {
@@ -706,24 +741,12 @@
       state.currentTab === "results" ? renderResultsPage() : renderSettingsPage(),
       "</main>",
       renderTabbar(),
+      renderPickerSheet(),
       "</div>"
     ].join("");
   }
 
-  function renderSectionSwitcher() {
-    return [
-      '<div class="panel-switcher">',
-      '<select class="select select--dense panel-switcher__select" data-action="change-section">',
-      SECTION_OPTIONS.map(function (section) {
-        return '<option value="' + section.key + '"' + (section.key === state.currentSection ? " selected" : "") + ">" + escapeHtml(section.label) + "</option>";
-      }).join(""),
-      "</select>",
-      "</div>",
-    ].join("");
-  }
-
   function renderResultsPage() {
-    if (state.currentSection === "cadenceTable") return renderCadenceTableSection();
     return renderCalculatorSection();
   }
 
@@ -731,10 +754,13 @@
     var wheelCircumference = currentWheelOption().circumferenceMm;
     var cadence = toNumber(state.calculator.cadenceOverride, state.settings.defaultCadenceRpm);
     var targetCadence = toNumber(state.calculator.targetCogCadenceRpm, state.settings.defaultCadenceRpm);
+    var gearSpeedRows = cadenceTableRows();
+    var gearSpeedCadence = toNumber(state.cadenceTable.cadenceRpm, state.settings.defaultCadenceRpm);
     var mode = state.calculator.mode;
     var modeMeta = CALCULATOR_MODES.find(function (item) { return item.key === mode; }) || CALCULATOR_MODES[0];
     var result = null;
     var fields = [];
+    var extraContent = "";
 
     if (mode === "powerToSpeed") {
       result = {
@@ -780,29 +806,52 @@
         inlineNumberField("data-calculator-input", "cadenceOverride", "踏频", state.calculator.cadenceOverride, "r/min")
       ];
     } else {
-      var exactCog = exactRequiredCogTeeth(
-        toNumber(state.calculator.targetSpeedKmh, 0),
-        targetCadence,
-        state.calculator.targetCogChainringTeeth,
-        wheelCircumference
-      );
-      result = {
-        value: nearestCog(exactCog, currentCassetteOption().cogs) + "T",
-        hint: "理论值约 " + formatNumber(exactCog, 1) + "T，已匹配当前飞轮中最接近的齿数。"
-      };
-      fields = [
-        inlineNumberField("data-calculator-input", "targetSpeedKmh", "目标速度", state.calculator.targetSpeedKmh, "km/h"),
-        inlineTeethSelect("data-calculator-select", "targetCogChainringTeeth", "牙盘", currentChainringOption().chainrings, state.calculator.targetCogChainringTeeth),
-        inlineNumberField("data-calculator-input", "targetCogCadenceRpm", "踏频", state.calculator.targetCogCadenceRpm, "r/min")
-      ];
+      if (mode === "targetCog") {
+        var exactCog = exactRequiredCogTeeth(
+          toNumber(state.calculator.targetSpeedKmh, 0),
+          targetCadence,
+          state.calculator.targetCogChainringTeeth,
+          wheelCircumference
+        );
+        result = {
+          value: nearestCog(exactCog, currentCassetteOption().cogs) + "T",
+          hint: "理论值约 " + formatNumber(exactCog, 1) + "T，已匹配当前飞轮中最接近的齿数。"
+        };
+        fields = [
+          inlineNumberField("data-calculator-input", "targetSpeedKmh", "目标速度", state.calculator.targetSpeedKmh, "km/h"),
+          inlineTeethSelect("data-calculator-select", "targetCogChainringTeeth", "牙盘", currentChainringOption().chainrings, state.calculator.targetCogChainringTeeth),
+          inlineNumberField("data-calculator-input", "targetCogCadenceRpm", "踏频", state.calculator.targetCogCadenceRpm, "r/min")
+        ];
+      } else {
+        fields = [
+          inlineTeethSelect("data-cadence-table-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.cadenceTable.selectedChainringTeeth),
+          inlineNumberField("data-cadence-table-input", "cadenceRpm", "踏频", state.cadenceTable.cadenceRpm, "r/min")
+        ];
+        extraContent = [
+          '<p class="panel__desc">按所选轮组周长、牙盘和踏频，直接输出每片飞轮的齿比与理论速度。</p>',
+          '<div class="table-shell">',
+          '<table class="data-table">',
+          '<thead><tr><th>飞轮</th><th>齿比</th><th>速度</th></tr></thead>',
+          '<tbody>',
+          gearSpeedRows.map(function (row) {
+            return "<tr><td>" + row.cog + "T</td><td>" + row.ratio + "</td><td>" + row.speed + " km/h</td></tr>";
+          }).join(""),
+          "</tbody></table>",
+          "</div>"
+        ].join("");
+        result = {
+          value: formatNumber(gearSpeedCadence, 0) + " r/min",
+          hint: currentCassetteOption().label + " · 共 " + currentCassetteOption().cogs.length + " 片飞轮"
+        };
+      }
     }
 
     return [
       '<section class="panel panel--hero">',
-      '<div class="panel__header panel__header--switcher">',
-      renderSectionSwitcher(),
+      '<div class="panel__header">',
+      '<h2 class="panel__title">计算器</h2>',
       "</div>",
-      '<div class="segment segment--four">',
+      '<div class="segment segment--modes">',
       CALCULATOR_MODES.map(function (item) {
         return '<button class="segment__button' + (item.key === mode ? " is-active" : "") + '" type="button" data-calculator-mode="' + item.key + '">' + escapeHtml(item.label) + "</button>";
       }).join(""),
@@ -811,31 +860,7 @@
       '<div class="calc-card__title">' + escapeHtml(modeMeta.title) + "</div>",
       '<div class="controls-line">' + fields.join("") + "</div>",
       renderMetricCard("计算结果", result.value, result.hint),
-      "</div>",
-      "</section>"
-    ].join("");
-  }
-
-  function renderCadenceTableSection() {
-    var rows = cadenceTableRows();
-    return [
-      '<section class="panel">',
-      '<div class="panel__header panel__header--switcher">',
-      renderSectionSwitcher(),
-      "</div>",
-      '<p class="panel__desc">按所选轮组周长、牙盘和踏频，直接输出每片飞轮的齿比与理论速度。</p>',
-      '<div class="controls-line controls-line--pair controls-line--wide">',
-      inlineTeethSelect("data-cadence-table-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.cadenceTable.selectedChainringTeeth),
-      inlineNumberField("data-cadence-table-input", "cadenceRpm", "踏频", state.cadenceTable.cadenceRpm, "r/min"),
-      "</div>",
-      '<div class="table-shell">',
-      '<table class="data-table">',
-      '<thead><tr><th>飞轮</th><th>齿比</th><th>速度</th></tr></thead>',
-      '<tbody>',
-      rows.map(function (row) {
-        return "<tr><td>" + row.cog + "T</td><td>" + row.ratio + "</td><td>" + row.speed + " km/h</td></tr>";
-      }).join(""),
-      "</tbody></table>",
+      extraContent,
       "</div>",
       "</section>"
     ].join("");
@@ -898,6 +923,42 @@
     ].join("");
   }
 
+  function renderPickerSheet() {
+    if (!pickerState) return "";
+
+    return [
+      '<div class="picker-sheet" data-close-picker="1">',
+      '<div class="picker-sheet__surface" role="dialog" aria-modal="true" aria-label="' + escapeHtml(pickerState.title) + '" data-picker-surface="1">',
+      '<div class="picker-sheet__header">',
+      '<div>',
+      '<p class="picker-sheet__eyebrow">规格列表</p>',
+      '<h2 class="picker-sheet__title">' + escapeHtml(pickerState.title) + "</h2>",
+      "</div>",
+      '<button class="picker-sheet__close" type="button" data-close-picker="1">关闭</button>',
+      "</div>",
+      '<div class="picker-sheet__body">',
+      pickerState.groups.map(function (group) {
+        if (!group.options || !group.options.length) return "";
+        return [
+          '<section class="picker-group">',
+          '<h3 class="picker-group__title">' + escapeHtml(group.label) + "</h3>",
+          '<div class="picker-group__list">',
+          group.options.map(function (option) {
+            return '<button class="picker-option' + (option.id === pickerState.selectedId ? " is-active" : "") + '" type="button" data-picker-option="' + escapeHtml(option.id) + '">' +
+              '<span class="picker-option__label">' + escapeHtml(option.label) + '</span>' +
+              '<span class="picker-option__meta">' + escapeHtml(group.label) + "</span>" +
+            "</button>";
+          }).join(""),
+          "</div>",
+          "</section>"
+        ].join("");
+      }).join(""),
+      "</div>",
+      "</div>",
+      "</div>"
+    ].join("");
+  }
+
   function renderTabbar() {
     return [
       '<nav class="tabbar">',
@@ -914,21 +975,17 @@
   }
 
   function groupedPresetField(settingKey, label, groups, selectedId) {
+    var currentOption = selectedOption(groups, selectedId);
     var currentGroupLabel = groupLabelForOption(groups, selectedId);
     return [
-      '<label class="field">',
+      '<div class="field picker-field">',
       '<span class="field__label">' + escapeHtml(label) + "</span>",
-      '<select class="select" data-setting-select="' + escapeHtml(settingKey) + '">',
-      groups.map(function (group) {
-        return '<optgroup label="' + escapeHtml(group.label) + '">' +
-          group.options.map(function (option) {
-            return '<option value="' + escapeHtml(option.id) + '"' + (option.id === selectedId ? " selected" : "") + ">" + escapeHtml(option.label) + "</option>";
-          }).join("") +
-          "</optgroup>";
-      }).join(""),
-      "</select>",
+      '<button class="picker-trigger" type="button" data-open-picker="' + escapeHtml(settingKey) + '">',
+      '<span class="picker-trigger__value">' + escapeHtml(currentOption ? currentOption.label : "请选择") + "</span>",
+      '<span class="picker-trigger__icon">规格列表</span>',
+      "</button>",
       currentGroupLabel ? '<span class="field__hint">当前分组：' + escapeHtml(currentGroupLabel) + "</span>" : "",
-      "</label>"
+      "</div>"
     ].join("");
   }
 
@@ -986,20 +1043,6 @@
   document.addEventListener("change", function (event) {
     var target = event.target;
 
-    if (target.matches("[data-action='change-section']")) {
-      updateState(function (draft) {
-        draft.currentSection = target.value;
-      });
-      return;
-    }
-
-    if (target.matches("[data-setting-select]")) {
-      updateState(function (draft) {
-        draft.settings[target.getAttribute("data-setting-select")] = target.value;
-      });
-      return;
-    }
-
     if (target.matches("[data-setting-input]")) {
       updateState(function (draft) {
         draft.settings[target.getAttribute("data-setting-input")] = Number(target.value);
@@ -1047,6 +1090,9 @@
     var target = event.target;
     var tabButton = target.closest("[data-tab]");
     var modeButton = target.closest("[data-calculator-mode]");
+    var openPickerButton = target.closest("[data-open-picker]");
+    var pickerOptionButton = target.closest("[data-picker-option]");
+    var closePickerButton = target.closest("[data-close-picker]");
     var addChainringButton = target.closest("[data-add-chainring]");
     var addCassetteButton = target.closest("[data-add-cassette]");
     var addWheelButton = target.closest("[data-add-wheel]");
@@ -1062,6 +1108,26 @@
       updateState(function (draft) {
         draft.calculator.mode = modeButton.getAttribute("data-calculator-mode");
       });
+      return;
+    }
+
+    if (openPickerButton) {
+      openPicker(openPickerButton.getAttribute("data-open-picker"));
+      return;
+    }
+
+    if (pickerOptionButton && pickerState) {
+      var optionId = pickerOptionButton.getAttribute("data-picker-option");
+      var settingKey = pickerState.settingKey;
+      pickerState = null;
+      updateState(function (draft) {
+        draft.settings[settingKey] = optionId;
+      });
+      return;
+    }
+
+    if (closePickerButton) {
+      closePicker();
       return;
     }
 

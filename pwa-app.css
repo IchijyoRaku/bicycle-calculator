@@ -98,23 +98,6 @@ button {
   align-items: flex-start;
 }
 
-.panel__header--switcher {
-  display: block;
-}
-
-.panel-switcher {
-  width: 100%;
-  min-width: 0;
-}
-
-.panel-switcher__select {
-  min-height: 52px;
-  border-radius: 18px;
-  font-size: 21px;
-  font-weight: 800;
-  padding-right: 44px;
-}
-
 .panel__eyebrow {
   margin: 0 0 4px;
   color: var(--primary);
@@ -154,7 +137,7 @@ button {
   gap: 8px;
 }
 
-.segment--four {
+.segment--modes {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -218,6 +201,10 @@ button {
   gap: 8px;
 }
 
+.picker-field {
+  gap: 10px;
+}
+
 .field__label,
 .inline-field__label {
   color: var(--muted);
@@ -236,6 +223,37 @@ button {
   color: var(--muted);
   font-size: 12px;
   pointer-events: none;
+}
+
+.field__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.picker-trigger {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  color: var(--text);
+  text-align: left;
+}
+
+.picker-trigger__value {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.picker-trigger__icon {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .select,
@@ -601,6 +619,115 @@ button {
   color: var(--notice-text);
 }
 
+.picker-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px 12px;
+  background: rgba(4, 10, 18, 0.56);
+  backdrop-filter: blur(16px);
+}
+
+.picker-sheet__surface {
+  width: min(920px, 100%);
+  max-height: min(76vh, 720px);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 28px 28px 20px 20px;
+  background:
+    radial-gradient(circle at top right, rgba(87, 183, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(11, 24, 39, 0.98), rgba(8, 19, 31, 0.96));
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.32);
+}
+
+.picker-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.picker-sheet__eyebrow {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.picker-sheet__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.picker-sheet__close {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.picker-sheet__body {
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  padding-right: 4px;
+}
+
+.picker-group {
+  display: grid;
+  gap: 10px;
+}
+
+.picker-group__title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.picker-group__list {
+  display: grid;
+  gap: 10px;
+}
+
+.picker-option {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  text-align: left;
+}
+
+.picker-option.is-active {
+  border-color: rgba(87, 183, 255, 0.36);
+  background: rgba(87, 183, 255, 0.16);
+}
+
+.picker-option__label {
+  font-weight: 700;
+}
+
+.picker-option__meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .empty {
   border: 1px dashed var(--line-strong);
   color: var(--muted);
@@ -608,8 +735,8 @@ button {
 }
 
 @media (min-width: 761px) {
-  .segment--four {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .segment--modes {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .settings-grid {
@@ -653,10 +780,6 @@ button {
     flex-direction: column;
   }
 
-  .panel-switcher__select {
-    font-size: 19px;
-  }
-
   .metric-card__value {
     font-size: 28px;
   }
@@ -669,5 +792,23 @@ button {
 
   .tabbar__label {
     font-size: 14px;
+  }
+
+  .picker-sheet {
+    padding: 12px 10px;
+  }
+
+  .picker-sheet__surface {
+    max-height: 82vh;
+    padding: 16px;
+    border-radius: 24px 24px 18px 18px;
+  }
+
+  .picker-sheet__header {
+    flex-direction: column;
+  }
+
+  .picker-sheet__close {
+    width: 100%;
   }
 }
