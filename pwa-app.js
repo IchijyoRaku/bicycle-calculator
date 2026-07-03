@@ -702,7 +702,6 @@
   function render() {
     root.innerHTML = [
       '<div class="shell">',
-      renderTopbar(),
       '<main class="page">',
       state.currentTab === "results" ? renderResultsPage() : renderSettingsPage(),
       "</main>",
@@ -711,25 +710,15 @@
     ].join("");
   }
 
-  function renderTopbar() {
+  function renderSectionSwitcher() {
     return [
-      '<header class="appbar">',
-      '<div class="appbar__surface">',
-      '<div class="appbar__copy">',
-      '<p class="appbar__eyebrow">Cycling Data Lab</p>',
-      '<h1 class="appbar__title">诺比单车分析器</h1>',
-      '<p class="appbar__desc">参考 Garmin Connect、Wahoo、Ride with GPS 的移动数据卡片节奏，做成更像 APP 的单手操作页面。</p>',
-      "</div>",
-      '<label class="appbar__picker">',
-      '<span class="field__label">当前功能</span>',
-      '<select class="select select--dense" data-action="change-section">',
+      '<div class="panel-switcher">',
+      '<select class="select select--dense panel-switcher__select" data-action="change-section">',
       SECTION_OPTIONS.map(function (section) {
         return '<option value="' + section.key + '"' + (section.key === state.currentSection ? " selected" : "") + ">" + escapeHtml(section.label) + "</option>";
       }).join(""),
       "</select>",
-      "</label>",
       "</div>",
-      "</header>"
     ].join("");
   }
 
@@ -810,12 +799,8 @@
 
     return [
       '<section class="panel panel--hero">',
-      '<div class="panel__header">',
-      '<div>',
-      '<p class="panel__eyebrow">Calculator</p>',
-      '<h2 class="panel__title">计算器功能</h2>',
-      '<p class="panel__desc">一次只看一个计算任务，输入压成一排，结果单独显示在下面。</p>',
-      "</div>",
+      '<div class="panel__header panel__header--switcher">',
+      renderSectionSwitcher(),
       "</div>",
       '<div class="segment segment--four">',
       CALCULATOR_MODES.map(function (item) {
@@ -835,13 +820,10 @@
     var rows = cadenceTableRows();
     return [
       '<section class="panel">',
-      '<div class="panel__header">',
-      '<div>',
-      '<p class="panel__eyebrow">Gear Calculator</p>',
-      '<h2 class="panel__title">齿比-车速计算</h2>',
+      '<div class="panel__header panel__header--switcher">',
+      renderSectionSwitcher(),
+      "</div>",
       '<p class="panel__desc">按所选轮组周长、牙盘和踏频，直接输出每片飞轮的齿比与理论速度。</p>',
-      "</div>",
-      "</div>",
       '<div class="controls-line controls-line--pair controls-line--wide">',
       inlineTeethSelect("data-cadence-table-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.cadenceTable.selectedChainringTeeth),
       inlineNumberField("data-cadence-table-input", "cadenceRpm", "踏频", state.cadenceTable.cadenceRpm, "r/min"),

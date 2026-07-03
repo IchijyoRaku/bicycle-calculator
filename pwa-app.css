@@ -67,58 +67,6 @@ button {
   flex-direction: column;
 }
 
-.appbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  padding: 14px 14px 0;
-  backdrop-filter: blur(18px);
-}
-
-.appbar__surface {
-  max-width: 920px;
-  margin: 0 auto;
-  display: grid;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-  background: rgba(10, 24, 40, 0.78);
-  box-shadow: var(--shadow);
-}
-
-.appbar__copy {
-  display: grid;
-  gap: 6px;
-}
-
-.appbar__eyebrow {
-  margin: 0;
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.appbar__title {
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.08;
-}
-
-.appbar__desc {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.appbar__picker {
-  display: grid;
-  gap: 8px;
-}
-
 .page {
   flex: 1;
   width: 100%;
@@ -148,6 +96,23 @@ button {
   gap: 12px;
   justify-content: space-between;
   align-items: flex-start;
+}
+
+.panel__header--switcher {
+  display: block;
+}
+
+.panel-switcher {
+  width: 100%;
+  min-width: 0;
+}
+
+.panel-switcher__select {
+  min-height: 52px;
+  border-radius: 18px;
+  font-size: 21px;
+  font-weight: 800;
+  padding-right: 44px;
 }
 
 .panel__eyebrow {
@@ -647,21 +612,12 @@ button {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .appbar__surface {
-    grid-template-columns: minmax(0, 1fr) 300px;
-    align-items: end;
-  }
-
   .settings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .appbar__title {
-    font-size: 24px;
-  }
-
   .panel {
     padding: 16px;
   }
@@ -695,6 +651,10 @@ button {
 
   .panel__header {
     flex-direction: column;
+  }
+
+  .panel-switcher__select {
+    font-size: 19px;
   }
 
   .metric-card__value {
