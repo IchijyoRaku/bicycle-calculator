@@ -28,6 +28,8 @@ jobs:
           cp index.html site/
           cp manifest.webmanifest site/
           cp sw.js site/
+          cp pwa-app.css site/
+          cp pwa-app.js site/
           cp favicon.ico site/
           cp info.md site/
           cp 公式.png site/

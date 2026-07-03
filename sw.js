@@ -1,4 +1,4 @@
-const CACHE_NAME = "noby-bicycle-v1";
+const CACHE_NAME = "noby-bicycle-v3";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -6,10 +6,8 @@ const CORE_ASSETS = [
   "./favicon.ico",
   "./info.md",
   "./公式.png",
-  "./css/app.5dc96127.css",
-  "./css/chunk-vendors.d5a5a3e8.css",
-  "./js/app.2301a2ac.js",
-  "./js/chunk-vendors.e8c62843.js",
+  "./pwa-app.css",
+  "./pwa-app.js",
   "./fonts/element-icons.732389de.ttf",
   "./fonts/element-icons.535877f5.woff"
 ];
