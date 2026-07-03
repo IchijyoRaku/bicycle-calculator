@@ -1,4 +1,4 @@
-const CACHE_NAME = "noby-bicycle-v3";
+const CACHE_NAME = "noby-bicycle-v4";
 const CORE_ASSETS = [
   "./",
   "./index.html",
