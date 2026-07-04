@@ -1,6 +1,6 @@
 {
-  "name": "诺比单车分析器",
-  "short_name": "单车分析",
+  "name": "单车计算器",
+  "short_name": "单车计算器",
   "description": "公路车齿比、功率、坡度、踏频与车速分析工具",
   "start_url": "./index.html",
   "scope": "./",
