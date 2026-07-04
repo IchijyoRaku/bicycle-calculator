@@ -245,6 +245,12 @@ button {
   text-align: left;
 }
 
+.picker-trigger--dense {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+
 .picker-trigger__value {
   font-weight: 700;
   line-height: 1.35;
@@ -356,6 +362,22 @@ button {
 
 .range-card__value {
   font-size: 22px;
+}
+
+.range-card__controls {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-card__step {
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-weight: 700;
 }
 
 .range-card__input {
@@ -816,6 +838,11 @@ button {
 
   .tabbar__label {
     font-size: 14px;
+  }
+
+  .range-card__controls {
+    grid-template-columns: 56px minmax(0, 1fr) 56px;
+    gap: 10px;
   }
 
   .picker-sheet {

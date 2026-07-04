@@ -511,12 +511,18 @@
   }
 
   function pickerConfig(settingKey) {
+    var chainringOption = currentChainringOption();
+    var cassetteOption = currentCassetteOption();
+
     if (settingKey === "selectedChainringId") {
       return {
         settingKey: settingKey,
         title: "牙盘规格",
         groups: state.settings.chainringGroups,
-        selectedId: state.settings.selectedChainringId
+        selectedId: state.settings.selectedChainringId,
+        applySelection: function (draft, option) {
+          draft.settings.selectedChainringId = option.id;
+        }
       };
     }
     if (settingKey === "selectedCassetteId") {
@@ -524,7 +530,10 @@
         settingKey: settingKey,
         title: "飞轮规格",
         groups: state.settings.cassetteGroups,
-        selectedId: state.settings.selectedCassetteId
+        selectedId: state.settings.selectedCassetteId,
+        applySelection: function (draft, option) {
+          draft.settings.selectedCassetteId = option.id;
+        }
       };
     }
     if (settingKey === "selectedWheelId") {
@@ -532,7 +541,86 @@
         settingKey: settingKey,
         title: "轮组规格",
         groups: state.settings.wheelGroups,
-        selectedId: state.settings.selectedWheelId
+        selectedId: state.settings.selectedWheelId,
+        applySelection: function (draft, option) {
+          draft.settings.selectedWheelId = option.id;
+        }
+      };
+    }
+    if (settingKey === "calculator:selectedChainringTeeth") {
+      return {
+        settingKey: settingKey,
+        title: "选择牙盘",
+        groups: [
+          {
+            id: "current-chainring",
+            label: chainringOption.label,
+            options: chainringOption.chainrings.map(function (tooth) {
+              return { id: "chainring-" + tooth, label: tooth + "T", value: tooth };
+            })
+          }
+        ],
+        selectedId: "chainring-" + state.calculator.selectedChainringTeeth,
+        applySelection: function (draft, option) {
+          draft.calculator.selectedChainringTeeth = option.value;
+        }
+      };
+    }
+    if (settingKey === "calculator:selectedCogTeeth") {
+      return {
+        settingKey: settingKey,
+        title: "选择飞轮",
+        groups: [
+          {
+            id: "current-cassette",
+            label: cassetteOption.label,
+            options: cassetteOption.cogs.map(function (tooth) {
+              return { id: "cog-" + tooth, label: tooth + "T", value: tooth };
+            })
+          }
+        ],
+        selectedId: "cog-" + state.calculator.selectedCogTeeth,
+        applySelection: function (draft, option) {
+          draft.calculator.selectedCogTeeth = option.value;
+        }
+      };
+    }
+    if (settingKey === "calculator:targetCogChainringTeeth") {
+      return {
+        settingKey: settingKey,
+        title: "选择牙盘",
+        groups: [
+          {
+            id: "target-chainring",
+            label: chainringOption.label,
+            options: chainringOption.chainrings.map(function (tooth) {
+              return { id: "target-chainring-" + tooth, label: tooth + "T", value: tooth };
+            })
+          }
+        ],
+        selectedId: "target-chainring-" + state.calculator.targetCogChainringTeeth,
+        applySelection: function (draft, option) {
+          draft.calculator.targetCogChainringTeeth = option.value;
+        }
+      };
+    }
+    if (settingKey === "cadenceTable:selectedChainringTeeth") {
+      return {
+        settingKey: settingKey,
+        title: "选择牙盘",
+        groups: [
+          {
+            id: "table-chainring",
+            label: chainringOption.label,
+            options: chainringOption.chainrings.map(function (tooth) {
+              return { id: "table-chainring-" + tooth, label: tooth + "T", value: tooth };
+            })
+          }
+        ],
+        selectedId: "table-chainring-" + state.cadenceTable.selectedChainringTeeth,
+        applySelection: function (draft, option) {
+          draft.cadenceTable.selectedChainringTeeth = option.value;
+        }
       };
     }
     return null;
@@ -628,6 +716,44 @@
         speed: formatNumber(speedFromCadence(cadence, chainring, cog, wheelCircumference), 1)
       };
     });
+  }
+
+  function climbPowerSummary() {
+    var wheelCircumference = currentWheelOption().circumferenceMm;
+    var minGear = minimumGearSetup();
+    var speed = toNumber(state.calculator.climbPowerSpeedKmh, 0);
+    var slope = toNumber(state.calculator.climbPowerSlopePercent, 0);
+    var cadence = cadenceFromSpeed(speed, minGear.chainring, minGear.cog, wheelCircumference);
+    return {
+      slopeText: formatNumber(slope, Math.round(slope) === slope ? 0 : 1) + " %",
+      resultValue: formatNumber(totalPower(speed, slope, cdaForPosition("hoods")), 1) + " W",
+      resultHint: "当前最小齿比 " + minGear.chainring + "/" + minGear.cog + " = " + formatNumber(gearRatio(minGear.chainring, minGear.cog), 2) + "，对应踏频约 " + formatNumber(cadence, 0) + " r/min。"
+    };
+  }
+
+  function syncClimbPowerPreview() {
+    if (state.calculator.mode !== "climbPower") return;
+
+    var summary = climbPowerSummary();
+    var rangeValue = document.querySelector("[data-range-value='climbPowerSlopePercent']");
+    var rangeInput = document.querySelector("[data-range-input='climbPowerSlopePercent']");
+    var resultValue = document.querySelector(".calc-card .metric-card__value");
+    var resultHint = document.querySelector(".calc-card .metric-card__hint");
+
+    if (rangeValue) rangeValue.textContent = summary.slopeText;
+    if (rangeInput && rangeInput.value !== state.calculator.climbPowerSlopePercent) {
+      rangeInput.value = state.calculator.climbPowerSlopePercent;
+    }
+    if (resultValue) resultValue.textContent = summary.resultValue;
+    if (resultHint) resultHint.textContent = summary.resultHint;
+  }
+
+  function setCalculatorRangeValue(key, value) {
+    state.calculator[key] = value;
+    state.uiMessage = "";
+    syncSelections(state);
+    saveState();
+    syncClimbPowerPreview();
   }
 
   function updateState(mutator) {
@@ -773,7 +899,6 @@
     var cadence = toNumber(state.calculator.cadenceOverride, state.settings.defaultCadenceRpm);
     var targetCadence = toNumber(state.calculator.targetCogCadenceRpm, state.settings.defaultCadenceRpm);
     var gearSpeedRows = cadenceTableRows();
-    var minGear = minimumGearSetup();
     var mode = state.calculator.mode;
     var modeMeta = CALCULATOR_MODES.find(function (item) { return item.key === mode; }) || CALCULATOR_MODES[0];
     var result = null;
@@ -811,12 +936,10 @@
         inlinePositionSelect("speedToPowerPosition", state.calculator.speedToPowerPosition)
       ];
     } else if (mode === "climbPower") {
-      var climbSpeed = toNumber(state.calculator.climbPowerSpeedKmh, 0);
-      var climbSlope = toNumber(state.calculator.climbPowerSlopePercent, 0);
-      var climbCadence = cadenceFromSpeed(climbSpeed, minGear.chainring, minGear.cog, wheelCircumference);
+      var climbSummary = climbPowerSummary();
       result = {
-        value: formatNumber(totalPower(climbSpeed, climbSlope, cdaForPosition("hoods")), 1) + " W",
-        hint: "当前最小齿比 " + minGear.chainring + "/" + minGear.cog + " = " + formatNumber(gearRatio(minGear.chainring, minGear.cog), 2) + "，对应踏频约 " + formatNumber(climbCadence, 0) + " r/min。"
+        value: climbSummary.resultValue,
+        hint: climbSummary.resultHint
       };
       fieldsClassName = "controls-stack";
       fields = [
@@ -826,6 +949,7 @@
         "data-calculator-range",
         "climbPowerSlopePercent",
         "坡度",
+        climbSummary.slopeText,
         state.calculator.climbPowerSlopePercent,
         0,
         25,
@@ -843,8 +967,8 @@
         hint: "默认踏频已预填 " + formatNumber(state.settings.defaultCadenceRpm, 0) + " r/min，可直接修改。"
       };
       fields = [
-        inlineTeethSelect("data-calculator-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.calculator.selectedChainringTeeth),
-        inlineTeethSelect("data-calculator-select", "selectedCogTeeth", "飞轮", currentCassetteOption().cogs, state.calculator.selectedCogTeeth),
+        inlineTeethPicker("calculator:selectedChainringTeeth", "牙盘", state.calculator.selectedChainringTeeth),
+        inlineTeethPicker("calculator:selectedCogTeeth", "飞轮", state.calculator.selectedCogTeeth),
         inlineNumberField("data-calculator-input", "cadenceOverride", "踏频", state.calculator.cadenceOverride, "r/min")
       ];
     } else {
@@ -861,12 +985,12 @@
         };
         fields = [
           inlineNumberField("data-calculator-input", "targetSpeedKmh", "目标速度", state.calculator.targetSpeedKmh, "km/h"),
-          inlineTeethSelect("data-calculator-select", "targetCogChainringTeeth", "牙盘", currentChainringOption().chainrings, state.calculator.targetCogChainringTeeth),
+          inlineTeethPicker("calculator:targetCogChainringTeeth", "牙盘", state.calculator.targetCogChainringTeeth),
           inlineNumberField("data-calculator-input", "targetCogCadenceRpm", "踏频", state.calculator.targetCogCadenceRpm, "r/min")
         ];
       } else {
         fields = [
-          inlineTeethSelect("data-cadence-table-select", "selectedChainringTeeth", "牙盘", currentChainringOption().chainrings, state.cadenceTable.selectedChainringTeeth),
+          inlineTeethPicker("cadenceTable:selectedChainringTeeth", "牙盘", state.cadenceTable.selectedChainringTeeth),
           inlineNumberField("data-cadence-table-input", "cadenceRpm", "踏频", state.cadenceTable.cadenceRpm, "r/min")
         ];
         extraContent = [
@@ -1044,27 +1168,30 @@
     ].join("");
   }
 
-  function rangeField(action, key, label, value, min, max, step, suffix) {
+  function rangeField(action, key, label, displayValue, inputValue, min, max, step, suffix) {
     return [
       '<label class="range-card">',
       '<div class="range-card__meta">',
       '<span class="range-card__label">' + escapeHtml(label) + "</span>",
-      '<span class="range-card__value">' + escapeHtml(value) + (suffix ? " " + escapeHtml(suffix) : "") + "</span>",
+      '<span class="range-card__value" data-range-value="' + escapeHtml(key) + '">' + escapeHtml(displayValue) + "</span>",
       "</div>",
-      '<input class="range-card__input" type="range" min="' + escapeHtml(min) + '" max="' + escapeHtml(max) + '" step="' + escapeHtml(step) + '" value="' + escapeHtml(value) + '" ' + action + '="' + escapeHtml(key) + '">',
+      '<div class="range-card__controls">',
+      '<button class="range-card__step" type="button" data-range-step-key="' + escapeHtml(key) + '" data-range-step="-1">-1</button>',
+      '<input class="range-card__input" type="range" min="' + escapeHtml(min) + '" max="' + escapeHtml(max) + '" step="' + escapeHtml(step) + '" value="' + escapeHtml(inputValue) + '" data-range-input="' + escapeHtml(key) + '" ' + action + '="' + escapeHtml(key) + '">',
+      '<button class="range-card__step" type="button" data-range-step-key="' + escapeHtml(key) + '" data-range-step="1">+1</button>',
+      "</div>",
       "</label>"
     ].join("");
   }
 
-  function inlineTeethSelect(action, key, label, options, selected) {
+  function inlineTeethPicker(pickerKey, label, selected) {
     return [
       '<label class="inline-field">',
       '<span class="inline-field__label">' + escapeHtml(label) + "</span>",
-      '<select class="select select--dense" ' + action + '="' + escapeHtml(key) + '">',
-      options.map(function (option) {
-        return '<option value="' + option + '"' + (option === selected ? " selected" : "") + ">" + option + "T</option>";
-      }).join(""),
-      "</select>",
+      '<button class="picker-trigger picker-trigger--dense" type="button" data-open-picker="' + escapeHtml(pickerKey) + '">',
+      '<span class="picker-trigger__value">' + escapeHtml(selected) + "T</span>",
+      '<span class="picker-trigger__icon">选择</span>',
+      "</button>",
       "</label>"
     ].join("");
   }
@@ -1141,9 +1268,7 @@
     var target = event.target;
 
     if (target.matches("[data-calculator-range]")) {
-      updateState(function (draft) {
-        draft.calculator[target.getAttribute("data-calculator-range")] = target.value;
-      });
+      setCalculatorRangeValue(target.getAttribute("data-calculator-range"), target.value);
     }
   });
 
@@ -1154,6 +1279,7 @@
     var openPickerButton = target.closest("[data-open-picker]");
     var pickerOptionButton = target.closest("[data-picker-option]");
     var closePickerButton = target.closest("[data-close-picker]");
+    var rangeStepButton = target.closest("[data-range-step-key]");
     var addChainringButton = target.closest("[data-add-chainring]");
     var addCassetteButton = target.closest("[data-add-cassette]");
     var addWheelButton = target.closest("[data-add-wheel]");
@@ -1179,16 +1305,27 @@
 
     if (pickerOptionButton && pickerState) {
       var optionId = pickerOptionButton.getAttribute("data-picker-option");
-      var settingKey = pickerState.settingKey;
+      var config = pickerState;
+      var option = findOptionById(config.groups, optionId);
       pickerState = null;
+      if (!option) return;
       updateState(function (draft) {
-        draft.settings[settingKey] = optionId;
+        config.applySelection(draft, option);
       });
       return;
     }
 
     if (closePickerButton) {
       closePicker();
+      return;
+    }
+
+    if (rangeStepButton) {
+      var rangeKey = rangeStepButton.getAttribute("data-range-step-key");
+      var delta = Number(rangeStepButton.getAttribute("data-range-step")) || 0;
+      var currentValue = toNumber(state.calculator[rangeKey], 0);
+      var nextValue = Math.max(0, Math.min(25, currentValue + delta));
+      setCalculatorRangeValue(rangeKey, String(nextValue));
       return;
     }
 
